@@ -1,5 +1,5 @@
 # Introduction
-    The main purpose of this project is Getting public cloud monitor metric data (eg: ELB, EIP, NAT Gateway, connections, S3)
+    The main purpose of this project is Getting public cloud monitor metric data (eg: ELB, EIP, NAT Gatway, connections, S3)
     to falcon. We can check the monitor metric data which can't get by monitor agent installed in the machine but avaiable on the cloud console at any time
     
 # Prerequisite
@@ -13,7 +13,7 @@ https://github.com/KscSDK/ksc-sdk-python
 
 # Getting Started
 ```buildoutcfg
-1. git clone http:https://github.com/open-falcon/cloud-mon
+1. git clone http://git.n.xiaomi.com/liuwenjia/cloud2falcon
 2. pip install -r requirements.txt
 3. config your config.yml as following guide
 4. run : 'python cloud2falcon.py'

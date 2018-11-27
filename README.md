@@ -14,7 +14,7 @@ https://github.com/KscSDK/ksc-sdk-python
 
 # Getting Started
 ```buildoutcfg
-1. git clone http:https://github.com/open-falcon/cloud-mon
+1. git clone http://git.n.xiaomi.com/liuwenjia/cloud2falcon
 2. pip install -r requirements.txt
     # 若还有其他的pip确实的情况，请自行手动安装
 3. 编写配置文件config.yml , 编写说明见下. 代码里面的配置文件，可以之间添加上你自己的ak, sk就可以顺利运行。

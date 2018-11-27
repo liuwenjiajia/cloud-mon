@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # by Laura 2018/05/31
 
@@ -16,11 +16,7 @@ def setup_logging(default_path="logging.yml",
     if os.path.exists(path):
         with open(path, "r") as f:
             config = yaml.load(f)
-            try:
-                logging.config.dictConfig(config)
-            except BaseException:
-                os.makedirs('log/')
-                logging.config.dictConfig(config)
+            logging.config.dictConfig(config)
     else:
         logging.basicConfig(level=default_level)
 

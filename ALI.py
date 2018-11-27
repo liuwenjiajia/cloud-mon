@@ -2,7 +2,6 @@ import json
 import logging
 import datetime
 import oss2
-import time
 from aliyunsdkcore.request import CommonRequest
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkslb.request.v20140515 import DescribeLoadBalancersRequest
@@ -19,22 +18,12 @@ def chunks(l, n):
 def get_metric_data(period, namespace, name, id_list,
                     metricname, ak, sk, region):
     metric_data = []
-    if metricname == 'BandWidth':
-        ts = time.time()
-        t = int(ts)
-        for id in id_list:
-            v = int(id['BandWidth']) * 1024 * 1024
-            if v == 0:
-                continue
-            data = {"id": id['l'], "ip": id['d'], "region": region['site'], "metric": metricname,
-                    "time": t, "value": v}
-            metric_data.append(data)
-    for instance_id in list(chunks(id_list, 50)):
+    for id in list(chunks(id_list, 50)):
         data = get_metric_data_50(
             period,
             namespace,
             name,
-            instance_id,
+            id,
             metricname,
             ak,
             sk,
@@ -80,40 +69,43 @@ def get_metric_data_50(period, namespace, name, id_list,
     try:
         data = response1['Datapoints']
         data1 = json.loads(data)
+        if name == "acs_slb_dashboard":
+            for record in data1:
+                timeStamp = int(record['timestamp'] / 1000)
+                data = {"id": record['instanceId'], "ip": record['vip'], "region": region['site'], "metric": metricname,
+                        "time": timeStamp, "value": record['Average']}
+                # print(data)
+                metric_data.append(data)
+        elif name == "acs_nat_gateway" and metricname == "SnatConnection":
+            for record in data1:
+                timeStamp = int(record['timestamp'] / 1000)
+                data = {"id": record['instanceId'], "ip": "", "region": region['site'], "metric": metricname,
+                        "time": timeStamp, "value": record['Maximum']}
+                # print(data)
+                metric_data.append(data)
+        elif name == "acs_publicip":
+            for record in data1:
+                timeStamp = int(record['timestamp'] / 1000)
+                data = {"id": '', "ip": record['ip'], "region": region['site'], "metric": metricname,
+                        "time": timeStamp, "value": record['value']}
+                # print(data)
+                metric_data.append(data)
+        elif name == "acs_oss":
+            for record in data1:
+                timeStamp = int(record['timestamp'] / 1000)
+                data = {"id": record['BucketName'], "ip": '', "region": region['site'], "metric": metricname,
+                        "time": timeStamp, "value": record[metricname]}
+                # print(data)
+                metric_data.append(data)
+        else:
+            for record in data1:
+                timeStamp = int(record['timestamp'] / 1000)
+                data = {"id": record['instanceId'], "ip": '', "region": region['site'], "metric": metricname,
+                        "time": timeStamp, "value": record['Value']}
+                # print(data)
+                metric_data.append(data)
     except BaseException:
         logging.debug("no data responce: " + metricname)
-        return metric_data
-
-    if name == "acs_slb_dashboard":
-        for record in data1:
-            timestamp = int(record['timestamp'] / 1000)
-            data = {"id": record['instanceId'], "ip": record['vip'], "region": region['site'], "metric": metricname,
-                    "time": timestamp, "value": record['Average']}
-            metric_data.append(data)
-    elif name == "acs_nat_gateway" and metricname == "SnatConnection":
-        for record in data1:
-            timestamp = int(record['timestamp'] / 1000)
-            data = {"id": record['instanceId'], "ip": "", "region": region['site'], "metric": metricname,
-                    "time": timestamp, "value": record['Maximum']}
-            metric_data.append(data)
-    elif name == "acs_publicip":
-        for record in data1:
-            timestamp = int(record['timestamp'] / 1000)
-            data = {"id": instance_id['l'], "ip": record['ip'], "region": region['site'], "metric": metricname,
-                    "time": timestamp, "value": record['value']}
-            metric_data.append(data)
-    elif name == "acs_oss":
-        for record in data1:
-            timestamp = int(record['timestamp'] / 1000)
-            data = {"id": record['BucketName'], "ip": '', "region": region['site'], "metric": metricname,
-                    "time": timestamp, "value": record[metricname]}
-            metric_data.append(data)
-    else:
-        for record in data1:
-            timestamp = int(record['timestamp'] / 1000)
-            data = {"id": record['instanceId'], "ip": '', "region": region['site'], "metric": metricname,
-                    "time": timestamp, "value": record['Value']}
-            metric_data.append(data)
 
     metric_data.sort(key=lambda x: x["time"])
     return metric_data
@@ -133,7 +125,7 @@ def get_id(resource, ak, sk, region):
 
 
 def elb(ak, sk, region):
-    id_list = []
+    id = []
     client = AcsClient(ak, sk, region)
     request = DescribeLoadBalancersRequest.DescribeLoadBalancersRequest()
     request.set_accept_format('json')
@@ -141,12 +133,12 @@ def elb(ak, sk, region):
     response1 = str(response)
     response1 = json.loads(response1)
     for record in response1['LoadBalancers']['LoadBalancer']:
-        id_list.append({"l": record['LoadBalancerId'], "d": record['Address']})
-    return id_list
+        id.append({"l": record['LoadBalancerId'], "d": record['Address']})
+    return id
 
 
 def eip(ak, sk, region):
-    id_list = []
+    id = []
     client = AcsClient(ak, sk, region)
     request = DescribeEipAddressesRequest.DescribeEipAddressesRequest()
     request.set_accept_format('json')
@@ -155,14 +147,12 @@ def eip(ak, sk, region):
     response1 = json.loads(response1)
     id = []
     for record in response1['EipAddresses']['EipAddress']:
-        id_list.append({"l": record['AllocationId'],
-                        "d": record['IpAddress'],
-                        "BandWidth": record['Bandwidth']})
-    return id_list
+        id.append({"l": record['AllocationId'], "d": record['IpAddress']})
+    return id
 
 
 def nat(ak, sk, region):
-    id_list = []
+    id = []
     client = AcsClient(ak, sk, region)
     request = DescribeNatGatewaysRequest.DescribeNatGatewaysRequest()
     request.set_accept_format('json')
@@ -171,12 +161,12 @@ def nat(ak, sk, region):
     response1 = json.loads(response1)
     for record in response1['NatGateways']['NatGateway']:
         for band in record['BandwidthPackageIds']['BandwidthPackageId']:
-            id_list.append({"l": band, "d": record['NatGatewayId']})
-    return id_list
+            id.append({"l": band, "d": record['NatGatewayId']})
+    return id
 
 
 def connect(ak, sk, region):
-    id_list = []
+    id = []
     client = AcsClient(ak, sk, region)
     request = CommonRequest()
     request.set_accept_format('json')
@@ -189,16 +179,16 @@ def connect(ak, sk, region):
     response1 = str(response)
     response1 = json.loads(response1)
     for record in response1['RouterInterfaceSet']['RouterInterfaceType']:
-        id_list.append({"l": record['OppositeInterfaceId'],
-                        "d": record['OppositeInterfaceId'],
-                        "BandWidth": record['Bandwidth']})
-    return id_list
+        id.append({"l": record['Bandwidth'],
+                   "d": record['OppositeInterfaceId']})
+    return id
 
 
 def oss(ak, sk, region):
-    id_list = []
+    id = []
     auth = oss2.Auth(ak, sk)
     service = oss2.Service(auth, 'http://oss-cn-hangzhou.aliyuncs.com')
     for b in oss2.BucketIterator(service):
-        id_list.append({"l": "", "d": b.name})
-    return id_list
+        id.append({"l": "", "d": b.name})
+
+    return id

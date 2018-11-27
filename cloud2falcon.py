@@ -3,24 +3,29 @@
 
 import log
 import yaml
+import time
+import datetime
 import threading
 import jinja2
 import requests
 import json
 import logging
 
+from xmljson import badgerfish as bf
+from json import dumps
+from xml.etree.ElementTree import fromstring
 from multiCloud import get_id_list, get_metric_data
 
 
 with open('config.yml', 'r') as ymlfile:
-    # 考虑声明在start函数内?? 只在cloud2falcon中调用。
     cfg = yaml.load(ymlfile)
+ymlfile.close()
 PERIOD = cfg['period']
 
 
 def render_without_request(template_name, **context):
     """
-    usage same as flask.render_template:
+    useage same as flask.render_template:
 
     render_without_request('template.html', var1='foo', var2='bar')
     """
@@ -31,12 +36,16 @@ def render_without_request(template_name, **context):
     return template.render(**context)
 
 
+def xml_to_json(xml):
+    r = dumps(bf.data(fromstring(xml)))
+    return r
+
+
 def send_to_falcon(json_model, template_name):
     payload = render_without_request(template_name, metrics=json_model)
     # print payload
     data1 = json.loads(payload)
-    # add timeout time
-    r = requests.post(cfg['falcon_url'], data=json.dumps(data1), timeout=3)
+    r = requests.post(cfg['falcon_url'], data=json.dumps(data1))
     if r.status_code != 200:
         logging.error("send to falcon failed", r.json())
 
@@ -60,7 +69,7 @@ def peach_send_to_falcon(namespace, name, instance_id,
 def get_metric_json(resource):
     sub_threads = []
     for region in resource['region']:
-        instance_id = get_id_list(
+        id = get_id_list(
             resource['c_type'],
             resource['resource'],
             resource['ak'],
@@ -78,7 +87,7 @@ def get_metric_json(resource):
                 args=(
                     namespace,
                     resource['name'],
-                    instance_id,
+                    id,
                     metric,
                     resource['c_type'],
                     resource['ak'],
@@ -89,16 +98,12 @@ def get_metric_json(resource):
             sub_threads.append(t)
 
     for i in range(len(sub_threads)):
-        sub_threads[i].setDaemon(True)
         sub_threads[i].start()
-
-    for i in range(len(sub_threads)):
-        sub_threads[i].join(600)
 
 
 if __name__ == "__main__":
-    # 需要修改文件名，来配合falcon plugin的运行机制
     log.setup_logging("logging.yml")
+    start_time = datetime.datetime.utcnow()
     threads = []
     for res in cfg['cloud']:
         logging.info('start main process to get config')

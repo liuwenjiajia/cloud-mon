@@ -3,7 +3,7 @@
         "endpoint": "connect-{{ metric.region}}-{{ metric.id }}",
         "metric": "{{ metric.metric }}",
         "counterType": "GAUGE",
-        "tags": "metric={{ metric.metric }}, id={{ metric.id }}",
+        "tags": "metric={{ metric.metric }}, id={{ metric.id }}, bandwith={{ metric.ip}}",
         "step": 60,
         "timestamp": {{ metric.time }},
         "value": {{ metric.value }}

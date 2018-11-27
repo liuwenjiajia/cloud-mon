@@ -11,4 +11,5 @@ httplib2
 aliyun-python-sdk-cms
 aliyun-python-sdk-vpc
 oss2
-jinja2
+six
+ks3sdk
