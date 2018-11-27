@@ -13,7 +13,7 @@ https://github.com/KscSDK/ksc-sdk-python
 
 # Getting Started
 ```buildoutcfg
-1. git clone http://git.n.xiaomi.com/liuwenjia/cloud2falcon
+1. git clone git@github.com:open-falcon/cloud-mon.git
 2. pip install -r requirements.txt
 3. config your config.yml as following guide
 4. run : 'python cloud2falcon.py'
